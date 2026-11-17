@@ -11,8 +11,7 @@ const expenseEl = document.getElementById('total-expense');
 const listEl = document.getElementById('transaction-list');
 const clearAllBtn = document.getElementById('clear-all');
 
-let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
-let expenseChart = null;
+let transactions = JSON.parse(localStorage.getItem('transactions')) || new Array();
 
 // Hide expense category dropdown when "Income" is selected
 typeSelect.addEventListener('change', () => {
@@ -67,7 +66,7 @@ function deleteTransaction(id) {
 clearAllBtn.addEventListener('click', () => {
     if (transactions.length === 0) return;
     if (confirm('Are you sure you want to delete all transactions?')) {
-        transactions = [];
+        transactions = new Array();
         saveTransactions();
         updateUI();
     }
@@ -119,70 +118,95 @@ function renderList() {
     });
 }
 
-// Update Doughnut Chart (Chart.js)
+// Draw Native HTML5 Canvas Doughnut Chart (No external library needed)
 function updateChart() {
-    const chartCanvas = document.getElementById('expense-chart');
-    if (!chartCanvas || typeof Chart === 'undefined') return;
+    const canvas = document.getElementById('expense-chart');
+    if (!canvas) return;
 
-    const ctx = chartCanvas.getContext('2d');
+    const ctx = canvas.getContext('2d');
+    canvas.width = 360;
+    canvas.height = 260;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
     const expenses = transactions.filter(t => t.type === 'expense');
-
     const categoryTotals = {};
+    let totalExpense = 0;
+
     expenses.forEach(t => {
         categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
+        totalExpense += t.amount;
     });
 
     const labels = Object.keys(categoryTotals);
     const values = Object.values(categoryTotals);
+    const centerX = 110;
+    const centerY = 130;
+    const radius = 85;
+    const holeRadius = 48;
 
-    if (expenseChart) {
-        expenseChart.destroy();
-    }
+    // Empty state grey ring
+    if (labels.length === 0 || totalExpense === 0) {
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fill();
 
-    if (labels.length === 0) {
-        expenseChart = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: ['No Expenses'],
-                datasets: [{
-                    data: Array(1).fill(1),
-                    backgroundColor: ['#e2e8f0']
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    tooltip: { enabled: false },
-                    legend: { display: false }
-                }
-            }
-        });
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, holeRadius, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+
+        ctx.fillStyle = '#64748b';
+        ctx.font = '13px Segoe UI, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('No Expenses Yet', centerX, centerY + 5);
         return;
     }
 
-    expenseChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: values,
-                backgroundColor: [
-                    '#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6'
-                ],
-                borderWidth: 2,
-                borderColor: '#ffffff'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom'
-                }
-            }
-        }
+    const colors = Array.of('#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6');
+    let startAngle = -Math.PI / 2;
+
+    // Draw slices
+    values.forEach((val, index) => {
+        const sliceAngle = (val / totalExpense) * Math.PI * 2;
+        const color = colors.at(index % colors.length);
+
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, startAngle, startAngle + sliceAngle);
+        ctx.closePath();
+        ctx.fillStyle = color;
+        ctx.fill();
+
+        startAngle += sliceAngle;
+    });
+
+    // Cut inner hole for doughnut effect
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, holeRadius, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+
+    // Center total text
+    ctx.fillStyle = '#1e293b';
+    ctx.font = 'bold 14px Segoe UI, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`€${totalExpense.toFixed(0)}`, centerX, centerY + 5);
+
+    // Draw legend on the right
+    labels.forEach((label, index) => {
+        const color = colors.at(index % colors.length);
+        const percentage = ((values.at(index) / totalExpense) * 100).toFixed(0);
+        const yPos = 45 + index * 32;
+
+        ctx.fillStyle = color;
+        ctx.fillRect(225, yPos - 10, 12, 12);
+
+        ctx.fillStyle = '#1e293b';
+        ctx.font = '13px Segoe UI, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(`${label} (${percentage}%)`, 245, yPos);
     });
 }
 

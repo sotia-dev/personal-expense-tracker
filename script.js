@@ -121,7 +121,10 @@ function renderList() {
 
 // Update Doughnut Chart (Chart.js)
 function updateChart() {
-    const ctx = document.getElementById('expense-chart').getContext('2d');
+    const chartCanvas = document.getElementById('expense-chart');
+    if (!chartCanvas || typeof Chart === 'undefined') return;
+
+    const ctx = chartCanvas.getContext('2d');
     const expenses = transactions.filter(t => t.type === 'expense');
 
     const categoryTotals = {};
@@ -130,7 +133,7 @@ function updateChart() {
     });
 
     const labels = Object.keys(categoryTotals);
-    const data = Object.values(categoryTotals);
+    const values = Object.values(categoryTotals);
 
     if (expenseChart) {
         expenseChart.destroy();
@@ -142,7 +145,7 @@ function updateChart() {
             data: {
                 labels: ['No Expenses'],
                 datasets: [{
-                    data:,
+                    data: Array(1).fill(1),
                     backgroundColor: ['#e2e8f0']
                 }]
             },
@@ -163,7 +166,7 @@ function updateChart() {
         data: {
             labels: labels,
             datasets: [{
-                data: data,
+                data: values,
                 backgroundColor: [
                     '#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6'
                 ],

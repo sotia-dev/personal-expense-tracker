@@ -4,6 +4,8 @@ A lightweight, responsive web application built from scratch using **Vanilla Jav
 
 🔗 **Live Demo:** [View Live Application](https://sotia-dev.github.io/personal-expense-tracker/)
 
+![App Screenshot](Screenshot.PNG)
+
 ---
 
 ## Key Features
